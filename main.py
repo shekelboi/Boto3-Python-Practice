@@ -19,6 +19,16 @@ vpc = ec2.create_vpc(
     TagSpecifications=get_name_tag('vpc', 'boto3-vpc')
 )
 
+public_subnets = []
+for i in range(2):
+    public_subnets.append(vpc.create_subnet(
+        CidrBlock=f'172.32.{i}.0/24',
+        TagSpecifications=get_name_tag('subnet', f'boto3-public-subnet-{i + 1}')
+    ))
+
+# Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
+for subnet in public_subnets:
+    subnet.delete()
 vpc.delete()
