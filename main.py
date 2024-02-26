@@ -26,7 +26,6 @@ igw = ec2.create_internet_gateway(
 )
 vpc.attach_internet_gateway(InternetGatewayId=igw.id)
 
-
 # create private subnet
 private_subnet = vpc.create_subnet(
     CidrBlock='172.32.0.0/24',
@@ -44,11 +43,6 @@ for i in range(2):
 # create route table and route for private subnet
 private_rt = vpc.create_route_table(
     TagSpecifications=get_name_tag('route-table', 'boto3-private-rt')
-)
-
-private_rt.create_route(
-    DestinationCidrBlock='0.0.0.0/0',
-    GatewayId=igw.id
 )
 
 private_rt.associate_with_subnet(SubnetId=private_subnet.id)
@@ -113,7 +107,6 @@ public_sg.authorize_ingress(
         }
     ]
 )
-
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
