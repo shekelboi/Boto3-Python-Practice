@@ -26,7 +26,6 @@ igw = ec2.create_internet_gateway(
 )
 vpc.attach_internet_gateway(InternetGatewayId=igw.id)
 
-
 # create private subnet
 private_subnet = vpc.create_subnet(
     CidrBlock='172.32.0.0/24',
@@ -46,11 +45,6 @@ private_rt = vpc.create_route_table(
     TagSpecifications=get_name_tag('route-table', 'boto3-private-rt')
 )
 
-private_rt.create_route(
-    DestinationCidrBlock='0.0.0.0/0',
-    GatewayId=igw.id
-)
-
 private_rt.associate_with_subnet(SubnetId=private_subnet.id)
 
 # create route table and route for public subnet
@@ -66,8 +60,8 @@ public_rt.create_route(
 for public_subnet in public_subnets:
     public_rt.associate_with_subnet(SubnetId=public_subnet.id)
 
-# Create Private Security group
 
+# Create Private Security group
 private_sg = ec2.create_security_group(
     Description='Security group for Private EC2',
     GroupName='private-sg',
@@ -96,7 +90,6 @@ public_sg = ec2.create_security_group(
 )
 
 # Rules for public SG
-
 public_sg.authorize_ingress(
     IpPermissions=[
         {
