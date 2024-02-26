@@ -61,7 +61,6 @@ for public_subnet in public_subnets:
     public_rt.associate_with_subnet(SubnetId=public_subnet.id)
 
 # Create Private Security group
-
 private_sg = ec2.create_security_group(
     Description='Security group for Private EC2',
     GroupName='private-sg',
@@ -90,7 +89,6 @@ public_sg = ec2.create_security_group(
 )
 
 # Rules for public SG
-
 public_sg.authorize_ingress(
     IpPermissions=[
         {
@@ -108,8 +106,45 @@ public_sg.authorize_ingress(
     ]
 )
 
+# Create EC2 for public subnets
+instances = []
+for i, public_subnet in enumerate(public_subnets):
+    instance = ec2.create_instances(
+        ImageId='ami-0c0b74d29acd0cd97',
+        InstanceType='t2.micro',
+        MaxCount=1,
+        MinCount=1,
+        SubnetId=public_subnet.id,
+        SecurityGroupIds=[public_sg.id],
+        TagSpecifications=get_name_tag('instance', f'boto3-public-instance-{i + 1}')
+    )[0]  # ec2.create_instances() returns a list of instances, we take the first one
+    instances.append(instance)
+
+    instance.wait_until_running()
+
+# Create EC2 for private subnet
+for i in range(2):
+    ec2.create_instances(
+        ImageId='ami-0c0b74d29acd0cd97',
+        InstanceType='t2.micro',
+        MaxCount=1,
+        MinCount=1,
+        SubnetId=private_subnet.id,
+        SecurityGroupIds=[private_sg.id],
+        TagSpecifications=get_name_tag('instance', f'boto3-private-instance-{i + 1}')
+    )
+
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
+
+instances = ec2.instances.filter(
+    Filters=[{'Name': 'instance-state-name', 'Values': ['running', 'stopped']}]
+)
+for instance in instances:
+    instance.terminate()
+
+for instance in instances:
+    instance.wait_until_terminated()
 
 private_sg.delete()
 public_sg.delete()
