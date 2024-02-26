@@ -45,10 +45,6 @@ private_rt = vpc.create_route_table(
     TagSpecifications=get_name_tag('route-table', 'boto3-private-rt')
 )
 
-private_rt.create_route(
-    DestinationCidrBlock='0.0.0.0/0',
-)
-
 private_rt.associate_with_subnet(SubnetId=private_subnet.id)
 
 # create route table and route for public subnet
