@@ -66,12 +66,60 @@ public_rt.create_route(
 for public_subnet in public_subnets:
     public_rt.associate_with_subnet(SubnetId=public_subnet.id)
 
+# Create Private Security group
 
+private_sg = ec2.create_security_group(
+    Description='Security group for Private EC2',
+    GroupName='private-sg',
+    VpcId=vpc.id,
+    TagSpecifications=get_name_tag('security-group', 'boto3-private-sg')
+)
+
+# Rules for Private SG
+private_sg.authorize_ingress(
+    IpPermissions=[
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 22,
+            'ToPort': 22,
+            'IpRanges': [{'CidrIp': '172.32.0.0/16'}]
+        }
+    ]
+)
+
+# Create Public Security Group
+public_sg = ec2.create_security_group(
+    Description='Security group for Public EC2',
+    GroupName='public-sg',
+    VpcId=vpc.id,
+    TagSpecifications=get_name_tag('security-group', 'boto3-public-sg')
+)
+
+# Rules for public SG
+
+public_sg.authorize_ingress(
+    IpPermissions=[
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 22,
+            'ToPort': 22,
+            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+        },
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 80,
+            'ToPort': 80,
+            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+        }
+    ]
+)
 
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
+private_sg.delete()
+public_sg.delete()
 for subnet in public_subnets:
     subnet.delete()
 private_subnet.delete()
