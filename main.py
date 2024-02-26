@@ -60,7 +60,6 @@ public_rt.create_route(
 for public_subnet in public_subnets:
     public_rt.associate_with_subnet(SubnetId=public_subnet.id)
 
-
 # Create Private Security group
 private_sg = ec2.create_security_group(
     Description='Security group for Private EC2',
@@ -106,6 +105,7 @@ public_sg.authorize_ingress(
         }
     ]
 )
+
 
 # Create EC2 for public subnets
 for i, public_subnet in enumerate(public_subnets):
