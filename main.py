@@ -114,9 +114,30 @@ public_sg.authorize_ingress(
     ]
 )
 
+# Create EC2 for public subnets
+for i, public_subnet in enumerate(public_subnets):
+    ec2.create_instances(
+        ImageId='ami-0c0b74d29acd0cd97',
+        InstanceType='t2.micro',
+        MaxCount=1,
+        MinCount=1,
+        SubnetId=public_subnet.id,
+        SecurityGroupIds=[public_sg.id],
+        TagSpecifications=get_name_tag('instance', f'boto3-public-instance-{i + 1}')
+    )
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
+
+instances = ec2.instances.filter(
+    Filters=[{'Name': 'instance-state-name', 'Values': ['running', 'stopped']}]
+)
+for instance in instances:
+    instance.terminate()
+
+# We need to wait for EC2 to be deleted because SG is depending on EC2 and will cause error
+for instance in instances:
+    instance.wait_until_terminated()
 
 private_sg.delete()
 public_sg.delete()
