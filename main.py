@@ -134,6 +134,7 @@ for i in range(2):
         TagSpecifications=get_name_tag('instance', f'boto3-private-instance-{i + 1}')
     )
 
+
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
