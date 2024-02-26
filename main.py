@@ -61,7 +61,6 @@ for public_subnet in public_subnets:
     public_rt.associate_with_subnet(SubnetId=public_subnet.id)
 
 # Create Private Security group
-
 private_sg = ec2.create_security_group(
     Description='Security group for Private EC2',
     GroupName='private-sg',
@@ -90,7 +89,6 @@ public_sg = ec2.create_security_group(
 )
 
 # Rules for public SG
-
 public_sg.authorize_ingress(
     IpPermissions=[
         {
@@ -107,6 +105,7 @@ public_sg.authorize_ingress(
         }
     ]
 )
+
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
