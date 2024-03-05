@@ -126,7 +126,7 @@ amis = client.describe_images(Filters=ami_filters)
 selected_ami = amis['Images'][0]['ImageId']
 
 # Create EC2 for public subnets
-instances = []
+public_instances = []
 for i, public_subnet in enumerate(public_subnets):
     instance = ec2.create_instances(
         ImageId=selected_ami,
@@ -137,7 +137,7 @@ for i, public_subnet in enumerate(public_subnets):
         SecurityGroupIds=[public_sg.id],
         TagSpecifications=get_name_tag('instance', f'boto3-public-instance-{i + 1}')
     )[0]  # ec2.create_instances() returns a list of instances, we take the first one
-    instances.append(instance)
+    public_instances.append(instance)
 
 # Create EC2 for private subnet
 private_instances = []
@@ -156,13 +156,13 @@ for i in range(2):
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
-for instance in instances:
+for instance in public_instances:
     instance.terminate()
 
 for instance in private_instances:
     instance.terminate()
 
-for instance in instances:
+for instance in public_instances:
     instance.wait_until_terminated()
 
 for instance in private_instances:
