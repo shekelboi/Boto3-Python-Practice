@@ -106,9 +106,67 @@ public_sg.authorize_ingress(
     ]
 )
 
+# Retrieve AMI dynamically
+client = boto3.client('ec2')
+ami_filters = [
+    {
+        'Name': 'name',
+        'Values': [
+            'Amazon Linux 2023 AMI 2023.0.20230315.0 x86_64 HVM kernel-6.1 SSD Volume Type by Venv'
+        ]
+    },
+    {
+        'Name': 'architecture',
+        'Values': [
+            'x86_64'
+        ]
+    }
+]
+amis = client.describe_images(Filters=ami_filters)
+selected_ami = amis['Images'][0]['ImageId']
+
+# Create EC2 for public subnets
+public_instances = []
+for i, public_subnet in enumerate(public_subnets):
+    instance = ec2.create_instances(
+        ImageId=selected_ami,
+        InstanceType='t2.micro',
+        MaxCount=1,
+        MinCount=1,
+        SubnetId=public_subnet.id,
+        SecurityGroupIds=[public_sg.id],
+        TagSpecifications=get_name_tag('instance', f'boto3-public-instance-{i + 1}')
+    )[0]  # ec2.create_instances() returns a list of instances, we take the first one
+    public_instances.append(instance)
+
+# Create EC2 for private subnet
+private_instances = []
+for i in range(2):
+    instance = ec2.create_instances(
+        ImageId=selected_ami,
+        InstanceType='t2.micro',
+        MaxCount=1,
+        MinCount=1,
+        SubnetId=private_subnet.id,
+        SecurityGroupIds=[private_sg.id],
+        TagSpecifications=get_name_tag('instance', f'boto3-private-instance-{i + 1}')
+    )[0]
+    private_instances.append(instance)
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
+
+for instance in public_instances:
+    instance.terminate()
+
+for instance in private_instances:
+    instance.terminate()
+
+for instance in public_instances:
+    instance.wait_until_terminated()
+
+for instance in private_instances:
+    instance.wait_until_terminated()
 
 private_sg.delete()
 public_sg.delete()
