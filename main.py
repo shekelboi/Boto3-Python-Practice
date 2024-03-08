@@ -120,7 +120,6 @@ public_sg.authorize_ingress(
     ]
 )
 
-
 # Initialize the ELBv2 (ALB) client
 elbv2 = boto3.client('elbv2')
 
@@ -186,7 +185,6 @@ listener_response = elbv2.create_listener(
         }
     ]
 )
-
 
 
 # Deleting the built infrastructure
