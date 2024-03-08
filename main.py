@@ -1,4 +1,5 @@
 import boto3
+import random
 
 
 def get_name_tag(resource_type, name):
@@ -14,6 +15,9 @@ def get_name_tag(resource_type, name):
 
 
 ec2 = boto3.resource('ec2')
+client = boto3.client('ec2')
+
+
 # Create VPC
 vpc = ec2.create_vpc(
     CidrBlock='172.32.0.0/16',
@@ -32,11 +36,21 @@ private_subnet = vpc.create_subnet(
     TagSpecifications=get_name_tag('subnet', 'boto3-private-subnet')
 )
 
+
+# Retrieve availability zones
+azs = client.describe_availability_zones()['AvailabilityZones']
+available_azs = [az['ZoneName'] for az in azs]
+
+
+# Randomly select two distinct availability zones
+selected_azs = random.sample(available_azs, 2)
+
 # create 2 public subnets
 public_subnets = []
-for i in range(2):
+for i, az in enumerate(selected_azs):
     public_subnets.append(vpc.create_subnet(
         CidrBlock=f'172.32.{1 + i}.0/24',
+        AvailabilityZone=az,
         TagSpecifications=get_name_tag('subnet', f'boto3-public-subnet-{i + 1}')
     ))
 
@@ -136,12 +150,7 @@ alb_response = elbv2.create_load_balancer(
     Subnets=[subnet.id for subnet in public_subnets],
     SecurityGroups=[alb_sg.id],
     Scheme='internet-facing',
-    Tags=[
-        {
-            'Key': 'Name',
-            'Value': 'boto3-application-load-balancer'
-        }
-    ],
+    Tags=[{'Key': 'Name', 'Value': 'boto3-application-load-balancer'}],
     Type='application',
     IpAddressType='ipv4'
 )
