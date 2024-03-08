@@ -184,6 +184,9 @@ listener_response = elbv2.create_listener(
     ]
 )
 
+listener_arn = listener_response['Listeners'][0]['ListenerArn']
+
+
 # Retrieve AMI dynamically
 client = boto3.client('ec2')
 ami_filters = [
@@ -248,12 +251,12 @@ for instance in private_instances:
 
 private_sg.delete()
 public_sg.delete()
+elbv2.delete_listener(ListenerArn=listener_arn)
+elbv2.delete_target_group(TargetGroupArn=target_group_arn)
+elbv2.delete_load_balancer(LoadBalancerArn=alb_arn)
+alb_sg.delete()
 for subnet in public_subnets:
     subnet.delete()
-elbv2.delete_listener()
-elbv2.delete_target_group()
-elbv2.delete_load_balancer()
-ec2.delete_security_group()
 private_subnet.delete()
 public_rt.delete()
 private_rt.delete()
