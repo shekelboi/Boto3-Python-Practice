@@ -121,30 +121,6 @@ public_sg.authorize_ingress(
 )
 
 
-# Initialize the ELBv2 (ALB) client
-elbv2 = boto3.client('elbv2')
-
-# Create a Security Group for the ALB
-alb_sg = ec2.create_security_group(
-    Description='ALB security group',
-    GroupName='alb-sg',
-    VpcId=vpc.id,
-    TagSpecifications=get_name_tag('security-group', 'boto3-alb-sg')
-)
-
-# Allow inbound HTTP traffic to the ALB Security Group
-alb_sg.authorize_ingress(
-    IpPermissions=[
-        {
-            'IpProtocol': 'tcp',
-            'FromPort': 80,
-            'ToPort': 80,
-            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-        }
-    ]
-)
-
-
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
