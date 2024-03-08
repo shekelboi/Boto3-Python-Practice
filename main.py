@@ -144,50 +144,6 @@ alb_sg.authorize_ingress(
     ]
 )
 
-# Create an Application Load Balancer
-alb_response = elbv2.create_load_balancer(
-    Name='boto3-application-load-balancer',
-    Subnets=[subnet.id for subnet in public_subnets],
-    SecurityGroups=[alb_sg.id],
-    Scheme='internet-facing',
-    Tags=[{'Key': 'Name', 'Value': 'boto3-application-load-balancer'}],
-    Type='application',
-    IpAddressType='ipv4'
-)
-
-alb_arn = alb_response['LoadBalancers'][0]['LoadBalancerArn']
-
-# Create a Target Group
-target_group_response = elbv2.create_target_group(
-    Name='boto3-target-group',
-    Protocol='HTTP',
-    Port=80,
-    VpcId=vpc.id,
-    TargetType='instance',
-    Tags=[
-        {
-            'Key': 'Name',
-            'Value': 'boto3-target-group'
-        }
-    ]
-)
-
-target_group_arn = target_group_response['TargetGroups'][0]['TargetGroupArn']
-
-# Create a Listener for the ALB that forwards requests to the Target Group
-listener_response = elbv2.create_listener(
-    LoadBalancerArn=alb_arn,
-    Protocol='HTTP',
-    Port=80,
-    DefaultActions=[
-        {
-            'Type': 'forward',
-            'TargetGroupArn': target_group_arn
-        }
-    ]
-)
-
-
 
 # Deleting the built infrastructure
 input('Press Enter to destroy the infrastructure')
@@ -202,6 +158,3 @@ private_rt.delete()
 vpc.detach_internet_gateway(InternetGatewayId=igw.id)
 igw.delete()
 vpc.delete()
-elbv2.delete_load_balancer(LoadBalancerArn=alb_arn)
-elbv2.delete_target_group(TargetGroupArn=target_group_arn)
-alb_sg.delete()
