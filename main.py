@@ -187,7 +187,7 @@ listener_response = elbv2.create_listener(
 )
 
 
-# Deleting the built infrastructure
+# Delete the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
 private_sg.delete()
