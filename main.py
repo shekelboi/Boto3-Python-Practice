@@ -36,11 +36,9 @@ private_subnet = vpc.create_subnet(
     TagSpecifications=get_name_tag('subnet', 'boto3-private-subnet')
 )
 
-
 # Retrieve availability zones
 azs = client.describe_availability_zones()['AvailabilityZones']
 available_azs = [az['ZoneName'] for az in azs]
-
 
 # Randomly select two distinct availability zones
 selected_azs = random.sample(available_azs, 2)
@@ -186,8 +184,6 @@ listener_response = elbv2.create_listener(
     ]
 )
 
-
-# Delete the built infrastructure
 # Retrieve AMI dynamically
 client = boto3.client('ec2')
 ami_filters = [
@@ -260,3 +256,7 @@ private_rt.delete()
 vpc.detach_internet_gateway(InternetGatewayId=igw.id)
 igw.delete()
 vpc.delete()
+elbv2.delete_listener()
+elbv2.delete_target_group()
+elbv2.delete_load_balancer()
+ec2.delete_security_group()
