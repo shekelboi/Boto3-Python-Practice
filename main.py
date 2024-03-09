@@ -1,3 +1,5 @@
+from time import sleep
+from botocore.exceptions import ClientError
 import boto3
 import random
 
@@ -16,7 +18,6 @@ def get_name_tag(resource_type, name):
 
 ec2 = boto3.resource('ec2')
 client = boto3.client('ec2')
-
 
 # Create VPC
 vpc = ec2.create_vpc(
@@ -186,7 +187,6 @@ listener_response = elbv2.create_listener(
 
 listener_arn = listener_response['Listeners'][0]['ListenerArn']
 
-
 # Retrieve AMI dynamically
 client = boto3.client('ec2')
 ami_filters = [
@@ -234,7 +234,7 @@ for i in range(2):
     )[0]
     private_instances.append(instance)
 
-# Deleting the built infrastructure
+# Delete the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
 for instance in public_instances:
@@ -254,7 +254,16 @@ public_sg.delete()
 elbv2.delete_listener(ListenerArn=listener_arn)
 elbv2.delete_target_group(TargetGroupArn=target_group_arn)
 elbv2.delete_load_balancer(LoadBalancerArn=alb_arn)
-alb_sg.delete()
+elbv2.get_waiter('load_balancers_deleted').wait(LoadBalancerArns=[alb_arn])
+
+while True:
+    try:
+        alb_sg.delete()
+        break
+    except ClientError:
+        print(f'Waiting for the dependencies of {alb_sg} to be cleaned up.')
+        sleep(5)
+
 for subnet in public_subnets:
     subnet.delete()
 private_subnet.delete()
