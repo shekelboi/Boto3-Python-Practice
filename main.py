@@ -1,3 +1,5 @@
+from time import sleep
+from botocore.exceptions import ClientError
 import boto3
 import random
 
@@ -17,7 +19,6 @@ def get_name_tag(resource_type, name):
 ec2 = boto3.resource('ec2')
 client = boto3.client('ec2')
 
-
 # Create VPC
 vpc = ec2.create_vpc(
     CidrBlock='172.32.0.0/16',
@@ -36,11 +37,9 @@ private_subnet = vpc.create_subnet(
     TagSpecifications=get_name_tag('subnet', 'boto3-private-subnet')
 )
 
-
 # Retrieve availability zones
 azs = client.describe_availability_zones()['AvailabilityZones']
 available_azs = [az['ZoneName'] for az in azs]
-
 
 # Randomly select two distinct availability zones
 selected_azs = random.sample(available_azs, 2)
@@ -120,6 +119,74 @@ public_sg.authorize_ingress(
     ]
 )
 
+# Initialize the ELBv2 (ALB) client
+elbv2 = boto3.client('elbv2')
+
+# Create a Security Group for the ALB
+alb_sg = ec2.create_security_group(
+    Description='ALB security group',
+    GroupName='alb-sg',
+    VpcId=vpc.id,
+    TagSpecifications=get_name_tag('security-group', 'boto3-alb-sg')
+)
+
+# Allow inbound HTTP traffic to the ALB Security Group
+alb_sg.authorize_ingress(
+    IpPermissions=[
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 80,
+            'ToPort': 80,
+            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+        }
+    ]
+)
+
+# Create an Application Load Balancer
+alb_response = elbv2.create_load_balancer(
+    Name='boto3-application-load-balancer',
+    Subnets=[subnet.id for subnet in public_subnets],
+    SecurityGroups=[alb_sg.id],
+    Scheme='internet-facing',
+    Tags=[{'Key': 'Name', 'Value': 'boto3-application-load-balancer'}],
+    Type='application',
+    IpAddressType='ipv4'
+)
+
+alb_arn = alb_response['LoadBalancers'][0]['LoadBalancerArn']
+
+# Create a Target Group
+target_group_response = elbv2.create_target_group(
+    Name='boto3-target-group',
+    Protocol='HTTP',
+    Port=80,
+    VpcId=vpc.id,
+    TargetType='instance',
+    Tags=[
+        {
+            'Key': 'Name',
+            'Value': 'boto3-target-group'
+        }
+    ]
+)
+
+target_group_arn = target_group_response['TargetGroups'][0]['TargetGroupArn']
+
+# Create a Listener for the ALB that forwards requests to the Target Group
+listener_response = elbv2.create_listener(
+    LoadBalancerArn=alb_arn,
+    Protocol='HTTP',
+    Port=80,
+    DefaultActions=[
+        {
+            'Type': 'forward',
+            'TargetGroupArn': target_group_arn
+        }
+    ]
+)
+
+listener_arn = listener_response['Listeners'][0]['ListenerArn']
+
 # Retrieve AMI dynamically
 client = boto3.client('ec2')
 ami_filters = [
@@ -167,7 +234,7 @@ for i in range(2):
     )[0]
     private_instances.append(instance)
 
-# Deleting the built infrastructure
+# Delete the built infrastructure
 input('Press Enter to destroy the infrastructure')
 
 for instance in public_instances:
@@ -184,6 +251,19 @@ for instance in private_instances:
 
 private_sg.delete()
 public_sg.delete()
+elbv2.delete_listener(ListenerArn=listener_arn)
+elbv2.delete_target_group(TargetGroupArn=target_group_arn)
+elbv2.delete_load_balancer(LoadBalancerArn=alb_arn)
+elbv2.get_waiter('load_balancers_deleted').wait(LoadBalancerArns=[alb_arn])
+
+while True:
+    try:
+        alb_sg.delete()
+        break
+    except ClientError:
+        print(f'Waiting for the dependencies of {alb_sg} to be cleaned up.')
+        sleep(5)
+
 for subnet in public_subnets:
     subnet.delete()
 private_subnet.delete()
